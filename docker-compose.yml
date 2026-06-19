@@ -1,0 +1,130 @@
+name: obs-wp
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database
+  # ---------------------------------------------------------------------------
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # WordPress (Apache + PHP). Core lives in the image; only wp-content is
+  # bind-mounted from the host so git can track our theme & custom plugins.
+  # ---------------------------------------------------------------------------
+  wordpress:
+    image: wordpress:php8.3-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WP_HTTP_PORT:-8080}:80"
+    environment:
+      WORDPRESS_DB_HOST: ${DB_HOST}
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_TABLE_PREFIX: ${DB_PREFIX:-wp_}
+      WORDPRESS_AUTH_KEY: ${AUTH_KEY}
+      WORDPRESS_SECURE_AUTH_KEY: ${SECURE_AUTH_KEY}
+      WORDPRESS_LOGGED_IN_KEY: ${LOGGED_IN_KEY}
+      WORDPRESS_NONCE_KEY: ${NONCE_KEY}
+      WORDPRESS_AUTH_SALT: ${AUTH_SALT}
+      WORDPRESS_SECURE_AUTH_SALT: ${SECURE_AUTH_SALT}
+      WORDPRESS_LOGGED_IN_SALT: ${LOGGED_IN_SALT}
+      WORDPRESS_NONCE_SALT: ${NONCE_SALT}
+      WORDPRESS_DEBUG: ${WP_DEBUG:-1}
+      WORDPRESS_CONFIG_EXTRA: |
+        define( 'WP_HOME', getenv_docker('WP_HOME', 'http://localhost:8080') );
+        define( 'WP_SITEURL', getenv_docker('WP_HOME', 'http://localhost:8080') );
+        define( 'WP_ENVIRONMENT_TYPE', getenv_docker('WP_ENV', 'development') );
+        define( 'WP_TEMP_DIR', '/tmp' );
+      WP_HOME: ${WP_HOME}
+      WP_ENV: ${WP_ENV:-development}
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+      - ./.docker/zzz-custom.ini:/usr/local/etc/php/conf.d/zzz-custom.ini:ro
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # WP-CLI — used by bin/ scripts (docker compose run --rm wpcli wp ...).
+  # Behind the "cli" profile so `docker compose up` does not start it.
+  # ---------------------------------------------------------------------------
+  wpcli:
+    image: wordpress:cli-php8.3
+    profiles: ["cli"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: ${DB_HOST}
+      WORDPRESS_DB_USER: ${DB_USER}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD}
+      WORDPRESS_DB_NAME: ${DB_NAME}
+      WORDPRESS_TABLE_PREFIX: ${DB_PREFIX:-wp_}
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp-content:/var/www/html/wp-content
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # Node — runs Vite for the Sage theme (HMR in dev, build for prod).
+  # Stays idle; scripts drive it via `exec` / `run`.
+  # ---------------------------------------------------------------------------
+  node:
+    image: node:20
+    restart: unless-stopped
+    working_dir: /theme
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    environment:
+      # Make the Vite dev server reachable from the host browser.
+      VITE_PORT: ${VITE_PORT:-5173}
+    volumes:
+      - ./wp-content/themes/working-theme:/theme
+    command: ["tail", "-f", "/dev/null"]
+    networks:
+      - internal
+
+  # ---------------------------------------------------------------------------
+  # phpMyAdmin — optional DB GUI.
+  # ---------------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PMA_HTTP_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 256M
+    networks:
+      - internal
+
+volumes:
+  db_data:
+  wp_core:
+
+networks:
+  internal:

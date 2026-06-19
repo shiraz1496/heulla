@@ -1,0 +1,95 @@
+@import "tailwindcss" theme(static);
+@source "../../app/**/*.php";
+@source "../**/*.blade.php";
+@source "../**/*.js";
+
+/* ---------------------------------------------------------------------------
+   Base — sensible global defaults for the OBS theme.
+   --------------------------------------------------------------------------- */
+@layer base {
+  body {
+    @apply bg-white text-slate-700 antialiased leading-relaxed;
+  }
+
+  a {
+    @apply text-blue-600 underline-offset-2 transition-colors hover:text-blue-800;
+  }
+
+  h1 { @apply text-3xl font-bold text-slate-900; }
+  h2 { @apply text-2xl font-semibold text-slate-900; }
+  h3 { @apply text-xl font-semibold text-slate-900; }
+}
+
+/* ---------------------------------------------------------------------------
+   Layout & components — styles the semantic classes the Blade templates emit.
+   --------------------------------------------------------------------------- */
+@layer components {
+  /* Centered content column wrapping the whole app */
+  #app {
+    @apply mx-auto max-w-3xl px-6;
+  }
+
+  /* Header / branding */
+  .banner {
+    @apply flex flex-wrap items-center justify-between gap-4
+           border-b border-slate-200 py-6 mb-10;
+  }
+  .brand {
+    @apply text-xl font-bold tracking-tight text-slate-900 no-underline
+           hover:text-blue-700;
+  }
+  .nav-primary ul {
+    @apply flex flex-wrap gap-6 list-none m-0 p-0;
+  }
+  .nav-primary a {
+    @apply text-slate-600 no-underline hover:text-blue-700;
+  }
+
+  /* Main content */
+  .main {
+    @apply space-y-10;
+  }
+  .page-header {
+    @apply mb-8;
+  }
+
+  /* Post / article cards */
+  article {
+    @apply pb-8 border-b border-slate-100 last:border-0;
+  }
+  .entry-title {
+    @apply text-2xl font-semibold;
+  }
+  .entry-title a {
+    @apply text-slate-900 no-underline hover:text-blue-700;
+  }
+  .entry-summary {
+    @apply mt-3 text-slate-600;
+  }
+
+  /* Search form (the bare <input>/<button> Sage ships) */
+  .search-form {
+    @apply flex gap-2 my-6;
+  }
+  .search-form input[type="search"] {
+    @apply flex-1 rounded-md border border-slate-300 px-4 py-2
+           focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200;
+  }
+  .search-form button {
+    @apply rounded-md bg-slate-900 px-5 py-2 font-medium text-white
+           hover:bg-slate-700;
+  }
+
+  /* Sidebar & footer */
+  .sidebar {
+    @apply mt-14 pt-8 border-t border-slate-200 text-slate-600;
+  }
+  .content-info {
+    @apply mt-16 py-8 border-t border-slate-200 text-sm text-slate-500;
+  }
+
+  /* Pagination */
+  .pager, .page-nav {
+    @apply flex gap-4 mt-8;
+  }
+}
